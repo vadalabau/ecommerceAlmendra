@@ -283,3 +283,87 @@ h2 {
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
   transform: translateY(-5px);
 }
+
+.login-box {
+  max-width: 400px;
+  margin: 60px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.login-box input {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+}
+
+.error {
+  color: red;
+  margin-top: 10px;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #777;
+  margin-top: 10px;
+}
+
+.admin-panel {
+  margin-top: 40px;
+  padding: 20px;
+  background: #f3f3f3;
+  border-radius: 10px;
+}
+
+.admin-form {
+  margin-bottom: 20px;
+}
+
+.admin-form input {
+  display: block;
+  margin: 10px 0;
+  padding: 8px;
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #aaa;
+}
+
+.admin-panel {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  margin: 20px;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.admin-panel input {
+  margin: 8px 0;
+  padding: 8px;
+  width: 100%;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #007bff;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1em;
+}
+
+.btn-logout {
+  background-color: #ff4d4d;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  border-radius: 4px;
+}
