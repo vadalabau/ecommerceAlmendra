@@ -1,30 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-
-import outfit2 from './img/outfit2.png';
-import outfit1 from './img/outfit1.png';
-
-import remeraroja from './img/remeraroja.png';
-import remeraamarilla from './img/remeraamarilla.png';
-import remeraverde from './img/remeraverde.png';
-import remeraazul from './img/remeraazul.png';
-import remeramarron from './img/remeramarron.png';
-import remerablanca from './img/remerablanca.png';
-import remeranegra from './img/remeranegra.png';
-import remeragris from './img/remeragris.png';
-import remeravioleta from './img/remeravioleta.png';
-import remeraceleste from './img/remeraceleste.png';
-
-import pantalonrojo from './img/pantalonrojo.png';
-import pantalonamarillo from './img/pantalonamarillo.png';
-import pantalonverde from './img/pantalonverde.png';
-import pantalonazul from './img/pantalonazul.png';
-import pantalonmarron from './img/pantalonmarron.png';
-import pantalonblanco from './img/pantalonblanco.png';
-import pantalonnegro from './img/pantalonnegro.png';
-import pantalongris from './img/pantalongris.png';
-import pantalonvioleta from './img/pantalonvioleta.png';
-import pantalonceleste from './img/pantalonceleste.png';
+import axios from 'axios';
 
 function App() {
   const [user, setUser] = useState({ username: '', password: '' });
@@ -33,7 +9,7 @@ function App() {
   const [error, setError] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
 
-  // Carga usuarios desde localStorage o valores iniciales
+  // Usuarios guardados en localStorage
   const [users, setUsers] = useState(() => {
     const saved = localStorage.getItem('users');
     if (saved) return JSON.parse(saved);
@@ -43,37 +19,23 @@ function App() {
     ];
   });
 
-  // Guarda usuarios en localStorage al modificarse
   useEffect(() => {
     localStorage.setItem('users', JSON.stringify(users));
   }, [users]);
 
-  const [products] = useState([
-    { id: 1, name: 'Outfit Classic', price: 100000, category: 'Outfits', image: outfit1 },
-    { id: 2, name: 'Outfit Relaxed', price: 100000, category: 'Outfits', image: outfit2 },
-    { id: 3, name: 'Remera Roja', price: 25000, category: 'Remeras', image: remeraroja },
-    { id: 4, name: 'Remera Amarilla', price: 25000, category: 'Remeras', image: remeraamarilla },
-    { id: 5, name: 'Remera Verde', price: 25000, category: 'Remeras', image: remeraverde },
-    { id: 6, name: 'Remera Azul', price: 25000, category: 'Remeras', image: remeraazul },
-    { id: 7, name: 'Remera Marron', price: 25000, category: 'Remeras', image: remeramarron },
-    { id: 8, name: 'Remera Blanca', price: 25000, category: 'Remeras', image: remerablanca },
-    { id: 9, name: 'Remera Negra', price: 25000, category: 'Remeras', image: remeranegra },
-    { id: 10, name: 'Remera Gris', price: 25000, category: 'Remeras', image: remeragris },
-    { id: 11, name: 'Remera Violeta', price: 25000, category: 'Remeras', image: remeravioleta },
-    { id: 12, name: 'Remera Celeste', price: 25000, category: 'Remeras', image: remeraceleste },
-    { id: 13, name: 'Pantalon Rojo', price: 25000, category: 'Pantalones', image: pantalonrojo },
-    { id: 14, name: 'Pantalon Amarillo', price: 25000, category: 'Pantalones', image: pantalonamarillo },
-    { id: 15, name: 'Pantalon Verde', price: 25000, category: 'Pantalones', image: pantalonverde },
-    { id: 16, name: 'Pantalon Azul', price: 25000, category: 'Pantalones', image: pantalonazul },
-    { id: 17, name: 'Pantalon Marron', price: 25000, category: 'Pantalones', image: pantalonmarron },
-    { id: 18, name: 'Pantalon Blanco', price: 25000, category: 'Pantalones', image: pantalonblanco },
-    { id: 19, name: 'Pantalon Negro', price: 25000, category: 'Pantalones', image: pantalonnegro },
-    { id: 20, name: 'Pantalon Gris', price: 25000, category: 'Pantalones', image: pantalongris },
-    { id: 21, name: 'Pantalon Violeta', price: 25000, category: 'Pantalones', image: pantalonvioleta },
-    { id: 22, name: 'Pantalon Celeste', price: 25000, category: 'Pantalones', image: pantalonceleste }
-  ]);
-
+  const [products, setProducts] = useState([]);
+  const [newProduct, setNewProduct] = useState({ name: '', price: '', category: '', image: '' });
   const [cart, setCart] = useState([]);
+
+  useEffect(() => {
+    axios.get('http://localhost:5000/api/productos')
+      .then(res => {
+        setProducts(res.data);
+        console.log('Productos cargados:', res.data);
+      })
+      .catch(err => console.error('Error al cargar productos:', err));
+  }, []);
+
   const categories = [...new Set(products.map(p => p.category))];
 
   const handleLogin = (e) => {
@@ -107,32 +69,54 @@ function App() {
   };
 
   const addToCart = (product) => {
-    const existing = cart.find(item => item.id === product.id);
+    const existing = cart.find(item => item._id === product._id);
     if (existing) {
-      setCart(cart.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
+      setCart(cart.map(item => item._id === product._id ? { ...item, qty: item.qty + 1 } : item));
     } else {
       setCart([...cart, { ...product, qty: 1 }]);
     }
   };
 
   const removeFromCart = (productId) => {
-    const existing = cart.find(item => item.id === productId);
+    const existing = cart.find(item => item._id === productId);
+    if (!existing) return;
     if (existing.qty === 1) {
-      setCart(cart.filter(item => item.id !== productId));
+      setCart(cart.filter(item => item._id !== productId));
     } else {
-      setCart(cart.map(item => item.id === productId ? { ...item, qty: item.qty - 1 } : item));
+      setCart(cart.map(item => item._id === productId ? { ...item, qty: item.qty - 1 } : item));
     }
   };
 
   const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
-  // Opcional: función para cerrar sesión
   const handleLogout = () => {
     setIsLoggedIn(false);
     setUserRole('');
     setUser({ username: '', password: '' });
     setCart([]);
     setError('');
+  };
+
+  const handleProductSubmit = (e) => {
+    e.preventDefault();
+    if (!newProduct.name || !newProduct.price || !newProduct.category || !newProduct.image) {
+      alert('Complete todos los campos del producto.');
+      return;
+    }
+    axios.post('http://localhost:5000/api/productos', newProduct)
+      .then(res => {
+        setProducts([...products, res.data]);
+        setNewProduct({ name: '', price: '', category: '', image: '' });
+      })
+      .catch(err => alert('Error al subir producto'));
+  };
+
+  // Para mostrar bien la imagen, concatenamos con la URL base del backend
+  const getImageSrc = (image) => {
+    if (!image) return '';
+    if (image.startsWith('http')) return image;
+    if (image.startsWith('/img/')) return `http://localhost:5000${image}`;
+    return `http://localhost:5000/img/${image}`;
   };
 
   return (
@@ -159,28 +143,19 @@ function App() {
           </form>
           {error && <p className="error">{error}</p>}
           <p className="hint">
-            {isRegistering ? '¿Ya tenés cuenta? ' : '¿No tenés cuenta? '}
-            <button
-              className="link-button"
-              onClick={() => {
-                setError('');
-                setIsRegistering(!isRegistering);
-                setUser({ username: '', password: '' });
-              }}
-              type="button"
-            >
-              {isRegistering ? 'Iniciar sesión' : 'Registrarse'}
-            </button>
+            {isRegistering ? 'Ya tenés cuenta? ' : 'No tenés cuenta? '}
+            <button className="link-button" onClick={() => {
+              setError('');
+              setIsRegistering(!isRegistering);
+              setUser({ username: '', password: '' });
+            }}>{isRegistering ? 'Iniciar sesión' : 'Registrarse'}</button>
           </p>
-          <p className="hint">admin: admin / admin123<br />cliente: cliente / user123</p>
         </div>
       ) : (
         <>
           <header className="header">
             <h1>🤎 Almendra</h1>
-            <div>
-              <button className="btn btn-logout" onClick={handleLogout}>Cerrar sesión</button>
-            </div>
+            <button className="btn btn-logout" onClick={handleLogout}>Cerrar sesión</button>
             <div className="cart-top">
               <h2>Carrito ({userRole})</h2>
               <div className="cart">
@@ -189,13 +164,13 @@ function App() {
                 ) : (
                   <>
                     {cart.map((item) => (
-                      <div className="cart-item" key={item.id}>
-                        <img src={item.image} alt={item.name} className="cart-image" />
+                      <div className="cart-item" key={item._id}>
+                        <img src={getImageSrc(item.image)} alt={item.name} className="cart-image" />
                         <div className="cart-info">
                           <strong>{item.name}</strong> – ${item.price.toLocaleString()} x {item.qty}
                         </div>
                         <div className="cart-controls">
-                          <button className="btn btn-small" onClick={() => removeFromCart(item.id)}>-</button>
+                          <button className="btn btn-small" onClick={() => removeFromCart(item._id)}>-</button>
                           <button className="btn btn-small" onClick={() => addToCart(item)}>+</button>
                         </div>
                       </div>
@@ -207,21 +182,49 @@ function App() {
             </div>
           </header>
 
+          {userRole === 'admin' && (
+            <section className="admin-panel">
+              <h2>Agregar nuevo producto</h2>
+              <form onSubmit={handleProductSubmit}>
+                <input
+                  placeholder="Nombre"
+                  value={newProduct.name}
+                  onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
+                />
+                <input
+                  placeholder="Precio"
+                  type="number"
+                  value={newProduct.price}
+                  onChange={e => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })}
+                />
+                <input
+                  placeholder="Categoría"
+                  value={newProduct.category}
+                  onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
+                />
+                <input
+                  placeholder="Nombre archivo imagen"
+                  value={newProduct.image}
+                  onChange={e => setNewProduct({ ...newProduct, image: e.target.value })}
+                />
+                <button className="btn" type="submit">Subir</button>
+              </form>
+            </section>
+          )}
+
           <main className="catalog">
             {categories.map(category => (
               <div key={category}>
                 <h2 className="category-title">{category}</h2>
                 <div className="product-list">
-                  {products
-                    .filter(product => product.category === category)
-                    .map(product => (
-                      <div className="product-card" key={product.id}>
-                        <img src={product.image} alt={product.name} className="product-image" />
-                        <h3>{product.name}</h3>
-                        <p>${product.price.toLocaleString()}</p>
-                        <button className="btn" onClick={() => addToCart(product)}>Agregar al carrito</button>
-                      </div>
-                    ))}
+                  {products.filter(p => p.category === category).map(product => (
+                    <div className="product-card" key={product._id}>
+                      <img src={getImageSrc(product.image)} alt={product.name} className="product-image" />
+                      <h3>{product.name}</h3>
+                      <p>${product.price.toLocaleString()}</p>
+                      <button className="btn" onClick={() => addToCart(product)}>Agregar al carrito</button>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
