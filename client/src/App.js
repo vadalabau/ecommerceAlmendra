@@ -2,12 +2,32 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import axios from 'axios';
 
+// Configurar baseURL de axios con normalización para evitar URLs inválidas como ":5000"
+(function configureAxiosBaseURL() {
+  const envUrl = process.env.REACT_APP_API_URL;
+  const fallback = 'http://localhost:5000';
+
+  const normalize = (url) => {
+    if (!url) return fallback;
+    // Si ya incluye protocolo, usar tal cual
+    if (/^https?:\/\//i.test(url)) return url;
+    // Si empieza con ":" o solo un puerto, construir con host actual
+    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const protocol = typeof window !== 'undefined' ? window.location.protocol : 'http:';
+    const port = url.replace(/^:+/, '');
+    return `${protocol}//${host}:${port}`;
+  };
+
+  axios.defaults.baseURL = normalize(envUrl);
+})();
+
 function App() {
   const [user, setUser] = useState({ username: '', password: '' });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState('');
   const [error, setError] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [page, setPage] = useState('catalog'); // 'catalog' | 'cart'
 
   // Usuarios guardados en localStorage
   const [users, setUsers] = useState(() => {
@@ -28,12 +48,12 @@ function App() {
   const [cart, setCart] = useState([]);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/productos')
+    axios.get('/api/productos')
       .then(res => {
         setProducts(res.data);
         console.log('Productos cargados:', res.data);
       })
-      .catch(err => console.error('Error al cargar productos:', err));
+      .catch(err => console.error('Error al cargar productos:', err?.message || err));
   }, []);
 
   const categories = [...new Set(products.map(p => p.category))];
@@ -103,7 +123,7 @@ function App() {
       alert('Complete todos los campos del producto.');
       return;
     }
-    axios.post('http://localhost:5000/api/productos', newProduct)
+    axios.post('/api/productos', newProduct)
       .then(res => {
         setProducts([...products, res.data]);
         setNewProduct({ name: '', price: '', category: '', image: '' });
@@ -115,8 +135,10 @@ function App() {
   const getImageSrc = (image) => {
     if (!image) return '';
     if (image.startsWith('http')) return image;
-    if (image.startsWith('/img/')) return `http://localhost:5000${image}`;
-    return `http://localhost:5000/img/${image}`;
+    const base = (axios.defaults.baseURL || '').replace(/\/+$/,'');
+    if (image.startsWith('/img/')) return `${base}${image}`;
+    if (image.startsWith('img/')) return `${base}/${image}`;
+    return `${base}/img/${image.replace(/^\/+/, '')}`;
   };
 
   return (
@@ -153,10 +175,25 @@ function App() {
         </div>
       ) : (
         <>
-          <header className="header">
-            <h1>🤎 Almendra</h1>
-            <button className="btn btn-logout" onClick={handleLogout}>Cerrar sesión</button>
-            <div className="cart-top">
+          <header className="site-header">
+            <div className="brand">
+              <span className="brand-mark">A</span>
+              <span className="brand-name">Almendra</span>
+            </div>
+            <nav className="nav">
+              <button className={`nav-link ${page==='catalog' ? 'active' : ''}`} onClick={() => setPage('catalog')}>Catálogo</button>
+              <button className={`nav-link ${page==='cart' ? 'active' : ''}`} onClick={() => setPage('cart')}>Carrito</button>
+            </nav>
+            <div className="header-actions">
+              <div className="mini-cart" title="Productos en carrito">
+                <span className="mini-cart-count">{cart.reduce((s, i) => s + i.qty, 0)}</span>
+              </div>
+              <button className="btn btn-logout" onClick={handleLogout}>Cerrar sesión</button>
+            </div>
+          </header>
+
+          {page === 'cart' && (
+            <section className="cart-panel">
               <h2>Carrito ({userRole})</h2>
               <div className="cart">
                 {cart.length === 0 ? (
@@ -179,10 +216,10 @@ function App() {
                   </>
                 )}
               </div>
-            </div>
-          </header>
+            </section>
+          )}
 
-          {userRole === 'admin' && (
+          {page === 'catalog' && userRole === 'admin' && (
             <section className="admin-panel">
               <h2>Agregar nuevo producto</h2>
               <form onSubmit={handleProductSubmit}>
@@ -212,23 +249,33 @@ function App() {
             </section>
           )}
 
-          <main className="catalog">
-            {categories.map(category => (
-              <div key={category}>
-                <h2 className="category-title">{category}</h2>
-                <div className="product-list">
-                  {products.filter(p => p.category === category).map(product => (
-                    <div className="product-card" key={product._id}>
-                      <img src={getImageSrc(product.image)} alt={product.name} className="product-image" />
-                      <h3>{product.name}</h3>
-                      <p>${product.price.toLocaleString()}</p>
-                      <button className="btn" onClick={() => addToCart(product)}>Agregar al carrito</button>
+          {page === 'catalog' && (
+            <>
+              
+              <main className="catalog" id="catalogo">
+                {categories.length === 0 && (
+                  <p className="empty">No hay productos disponibles.</p>
+                )}
+                {categories.sort().map(category => (
+                  <div key={category}>
+                    <h2 className="category-title">{category}</h2>
+                    <div className="product-list">
+                      {products.filter(p => p.category === category).map(product => (
+                        <div className="product-card" key={product._id}>
+                          <div className="product-media">
+                            <img src={getImageSrc(product.image)} alt={product.name} className="product-image" />
+                          </div>
+                          <h3 className="product-title">{product.name}</h3>
+                          <p className="product-price">${product.price.toLocaleString()}</p>
+                          <button className="btn" onClick={() => addToCart(product)}>Agregar al carrito</button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </main>
+                  </div>
+                ))}
+              </main>
+            </>
+          )}
         </>
       )}
     </div>
