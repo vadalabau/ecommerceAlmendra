@@ -111,40 +111,92 @@ h1, h2 {
 
 .total {
   text-align: right;
-  font-size: 1.3rem;
   font-weight: bold;
   margin-top: 20px;
   color: var(--color-primary);
 }
 
-/* Responsive */
-@media (max-width: 900px) {
-  .container {
-    padding: 32px 16px;
+  /* Responsive */
+  @media (max-width: 900px) {
+    .container {
+      padding: 32px 16px;
+    }
+
+    .grid {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
   }
 
-  .grid {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-}
+  @media (max-width: 600px) {
+    h1, h2 {
+      margin-bottom: 16px;
+    }
 
-@media (max-width: 600px) {
-  h1, h2 {
-    margin-bottom: 16px;
-  }
+    .grid {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    .card, .cart {
+      padding: 16px;
+    }
 
-  .card, .cart {
-    padding: 16px;
-  }
+    .cart-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
 
-  .cart-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+    .btn {
+      width: 100%;
+    }
   }
-
-  .btn {
-    width: 100%;
-  }
-}
+ 
+ /* ===== Modern Warm Theme Overrides (new look) ===== */
+ :root {
+   --warm-bg: #fff8f3;         /* crema cálida */
+   --warm-surface: #ffffff;    /* superficie */
+   --warm-elev-1: #fff4ea;     /* tarjeta tenue */
+   --warm-text: #3f2d27;       /* cacao */
+   --warm-muted: #7a5f55;      /* cacao suave */
+   --warm-primary: #d77452;    /* terracota */
+   --warm-primary-600: #c65f3f;/* terracota intenso */
+   --warm-accent: #f2b486;     /* durazno */
+   --warm-accent-700: #e39a65; /* durazno profundo */
+   --ring: 0 0 0 3px rgba(215,116,82,0.25);
+   --radius-sm: 10px;
+   --radius-md: 14px;
+   --radius-lg: 18px;
+   --shadow-sm: 0 2px 10px rgba(31, 20, 15, 0.06);
+   --shadow-md: 0 8px 24px rgba(31, 20, 15, 0.08);
+   --shadow-lg: 0 16px 40px rgba(31, 20, 15, 0.10);
+ }
+ 
+ /* Base and typography */
+ body { background: var(--warm-bg); color: var(--warm-text); }
+ h1, h2 { font-family: 'Playfair Display', serif; color: var(--warm-text); letter-spacing: 0.2px; }
+ h1 { font-size: clamp(2rem, 3.5vw, 2.6rem); font-weight: 800; }
+ h2 { font-size: clamp(1.25rem, 2.6vw, 1.7rem); color: var(--warm-muted); }
+ 
+ .container { max-width: min(1200px, 92vw); padding: clamp(16px, 2.5vw, 32px); }
+ 
+ /* Cards */
+ .card, .cart { background: var(--warm-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); border: 1px solid rgba(63,45,39,0.06); }
+ 
+ /* Buttons */
+ .btn { background: linear-gradient(180deg, var(--warm-primary), var(--warm-primary-600)); color: #fff; border: none; border-radius: 999px; font-weight: 700; box-shadow: var(--shadow-sm); }
+ .btn:hover { background: var(--warm-primary-600); box-shadow: var(--shadow-md); }
+ .btn:focus-visible { outline: none; box-shadow: var(--shadow-sm), var(--ring); }
+ .btn-small { padding: 8px 12px; font-size: 0.9rem; }
+ 
+ /* Product grid and items */
+ .grid { gap: clamp(16px, 3vw, 28px); }
+ .product-title { color: var(--warm-text); font-weight: 700; }
+ .product-price { color: var(--warm-primary); font-weight: 700; }
+ 
+ /* Cart details */
+ .total { color: var(--warm-primary); font-weight: 800; }
+ 
+ /* Extra responsive tweaks */
+ @media (max-width: 960px) { .container { padding: 20px; } }
+ @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
