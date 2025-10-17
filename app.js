@@ -4,12 +4,19 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const path = require("path");
 require("dotenv").config();
+const mercadopago = require("mercadopago");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(bodyParser.json());
+
+// Mercado Pago config
+if (!process.env.MP_ACCESS_TOKEN) {
+  console.warn("⚠ MP_ACCESS_TOKEN no está definido. Las rutas de pago responderán 500.");
+}
+mercadopago.configure({ access_token: process.env.MP_ACCESS_TOKEN || "" });
 
 // Servir archivos estáticos (imágenes) desde la carpeta 'public/img'
 // Usar path.resolve para ruta absoluta
@@ -82,6 +89,61 @@ app.post("/api/productos", async (req, res) => {
   } catch (err) {
     console.error("POST /api/productos error:", err);
     res.status(400).json({ error: "Error al agregar producto" });
+  }
+});
+
+// ==== Pagos: crear preferencia de Mercado Pago ====
+app.post("/api/payments/create-preference", async (req, res) => {
+  try {
+    if (!process.env.MP_ACCESS_TOKEN) {
+      return res.status(500).json({ error: "MP_ACCESS_TOKEN no configurado" });
+    }
+    const { items = [], payerEmail } = req.body || {};
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "Items vacíos" });
+    }
+
+    const preference = {
+      items: items.map((i) => ({
+        title: i.name,
+        quantity: Number(i.qty || 1),
+        currency_id: "ARS",
+        unit_price: Number(i.price || 0),
+        picture_url: i.image ? (typeof i.image === 'string' ? i.image : undefined) : undefined,
+      })),
+      payer: payerEmail ? { email: payerEmail } : undefined,
+      back_urls: {
+        success: process.env.MP_SUCCESS_URL || "http://localhost:3000",
+        pending: process.env.MP_PENDING_URL || "http://localhost:3000",
+        failure: process.env.MP_FAILURE_URL || "http://localhost:3000",
+      },
+      auto_return: "approved",
+      binary_mode: true,
+      statement_descriptor: "ALMENDRA",
+      notification_url: process.env.MP_WEBHOOK_URL || undefined,
+    };
+
+    const mpResp = await mercadopago.preferences.create(preference);
+    return res.json({
+      preferenceId: mpResp.body.id,
+      init_point: mpResp.body.init_point,
+      sandbox_init_point: mpResp.body.sandbox_init_point,
+    });
+  } catch (err) {
+    console.error("/api/payments/create-preference error:", err?.message || err);
+    return res.status(500).json({ error: "No se pudo crear la preferencia" });
+  }
+});
+
+// Webhook básico
+app.post("/api/payments/webhook", async (req, res) => {
+  try {
+    // Puedes validar aquí con la API de MP según 'type' e 'id' recibidos
+    // y actualizar el estado de tu orden.
+    res.sendStatus(200);
+  } catch (err) {
+    console.error("/api/payments/webhook error:", err?.message || err);
+    res.sendStatus(500);
   }
 });
 

@@ -109,6 +109,30 @@ function App() {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
+  // Iniciar pago con Mercado Pago (Checkout Pro por redirección)
+  const handleCheckout = async () => {
+    try {
+      if (!cart.length) return;
+      const items = cart.map(i => ({
+        _id: i._id,
+        name: i.name,
+        price: i.price,
+        qty: i.qty,
+        image: getImageSrc(i.image)
+      }));
+      const { data } = await axios.post('/api/payments/create-preference', { items });
+      const target = data.init_point || data.sandbox_init_point;
+      if (target) {
+        window.location.href = target;
+      } else {
+        alert('No se pudo iniciar el pago');
+      }
+    } catch (e) {
+      console.error('Checkout error', e?.message || e);
+      alert('No se pudo iniciar el pago');
+    }
+  };
+
   const handleLogout = () => {
     setIsLoggedIn(false);
     setUserRole('');
@@ -202,7 +226,7 @@ function App() {
                   <>
                     {cart.map((item) => (
                       <div className="cart-item" key={item._id}>
-                        <img src={getImageSrc(item.image)} alt={item.name} className="cart-image" />
+                        <img src={getImageSrc(item.image)} alt={item.name} className="cart-image" loading='lazy' />
                         <div className="cart-info">
                           <strong>{item.name}</strong> – ${item.price.toLocaleString()} x {item.qty}
                         </div>
@@ -213,6 +237,11 @@ function App() {
                       </div>
                     ))}
                     <div className="total">Total: ${total.toLocaleString()}</div>
+                    <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
+                      <button className="btn btn-primary" onClick={handleCheckout}>
+                        Pagar con Mercado Pago
+                      </button>
+                    </div>
                   </>
                 )}
               </div>
@@ -263,7 +292,7 @@ function App() {
                       {products.filter(p => p.category === category).map(product => (
                         <div className="product-card" key={product._id}>
                           <div className="product-media">
-                            <img src={getImageSrc(product.image)} alt={product.name} className="product-image" />
+                            <img src={getImageSrc(product.image)} alt={product.name} className="product-image" loading='lazy' />
                           </div>
                           <h3 className="product-title">{product.name}</h3>
                           <p className="product-price">${product.price.toLocaleString()}</p>
