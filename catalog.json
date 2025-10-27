@@ -1,6 +1,6 @@
 [
   {
-    "_id": "68ffb3a819babe2753d7585b",
+    "_id": "68ffb62cb05c741ab9be0fc0",
     "name": "Remera Roja",
     "price": 1500,
     "category": "Remeras",
@@ -10,7 +10,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d7585c",
+    "_id": "68ffb62cb05c741ab9be0fc1",
     "name": "Remera Amarilla",
     "price": 1500,
     "category": "Remeras",
@@ -20,7 +20,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d7585d",
+    "_id": "68ffb62cb05c741ab9be0fc2",
     "name": "Remera Verde",
     "price": 1500,
     "category": "Remeras",
@@ -30,7 +30,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d7585e",
+    "_id": "68ffb62cb05c741ab9be0fc3",
     "name": "Remera Azul",
     "price": 1500,
     "category": "Remeras",
@@ -40,7 +40,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d7585f",
+    "_id": "68ffb62cb05c741ab9be0fc4",
     "name": "Remera Marrón",
     "price": 1500,
     "category": "Remeras",
@@ -50,7 +50,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d75860",
+    "_id": "68ffb62cb05c741ab9be0fc5",
     "name": "Remera Blanca",
     "price": 1500,
     "category": "Remeras",
@@ -60,7 +60,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d75861",
+    "_id": "68ffb62cb05c741ab9be0fc6",
     "name": "Remera Negra",
     "price": 1500,
     "category": "Remeras",
@@ -70,7 +70,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d75862",
+    "_id": "68ffb62cb05c741ab9be0fc7",
     "name": "Remera Gris",
     "price": 1500,
     "category": "Remeras",
@@ -80,7 +80,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d75863",
+    "_id": "68ffb62cb05c741ab9be0fc8",
     "name": "Remera Violeta",
     "price": 1500,
     "category": "Remeras",
@@ -90,7 +90,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d75864",
+    "_id": "68ffb62cb05c741ab9be0fc9",
     "name": "Remera Celeste",
     "price": 1500,
     "category": "Remeras",
@@ -100,7 +100,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d75865",
+    "_id": "68ffb62cb05c741ab9be0fca",
     "name": "Pantalón Rojo",
     "price": 3500,
     "category": "Pantalones",
@@ -110,7 +110,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d75866",
+    "_id": "68ffb62cb05c741ab9be0fcb",
     "name": "Pantalón Amarillo",
     "price": 3500,
     "category": "Pantalones",
@@ -120,7 +120,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d75867",
+    "_id": "68ffb62cb05c741ab9be0fcc",
     "name": "Pantalón Verde",
     "price": 3500,
     "category": "Pantalones",
@@ -130,7 +130,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d75868",
+    "_id": "68ffb62cb05c741ab9be0fcd",
     "name": "Pantalón Azul",
     "price": 3500,
     "category": "Pantalones",
@@ -140,7 +140,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d75869",
+    "_id": "68ffb62cb05c741ab9be0fce",
     "name": "Pantalón Marrón",
     "price": 3500,
     "category": "Pantalones",
@@ -150,7 +150,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d7586a",
+    "_id": "68ffb62cb05c741ab9be0fcf",
     "name": "Pantalón Blanco",
     "price": 3500,
     "category": "Pantalones",
@@ -160,7 +160,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d7586b",
+    "_id": "68ffb62cb05c741ab9be0fd0",
     "name": "Pantalón Negro",
     "price": 3500,
     "category": "Pantalones",
@@ -170,7 +170,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d7586c",
+    "_id": "68ffb62cb05c741ab9be0fd1",
     "name": "Pantalón Gris",
     "price": 3500,
     "category": "Pantalones",
@@ -180,7 +180,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d7586d",
+    "_id": "68ffb62cb05c741ab9be0fd2",
     "name": "Pantalón Violeta",
     "price": 3500,
     "category": "Pantalones",
@@ -190,7 +190,7 @@
     "__v": 0
   },
   {
-    "_id": "68ffb3a819babe2753d7586e",
+    "_id": "68ffb62cb05c741ab9be0fd3",
     "name": "Pantalón Celeste",
     "price": 3500,
     "category": "Pantalones",
@@ -200,9 +200,9 @@
     "__v": 0
   },
   {
-    "_id": "68ffb496da187df5487f63d1",
-    "name": "Botas Negras",
-    "price": 40000,
+    "_id": "68ffb7f07aa4aad7d0282237",
+    "name": "Bota negra",
+    "price": 20000,
     "category": "Zapatos",
     "image": "bota1.png",
     "__v": 0

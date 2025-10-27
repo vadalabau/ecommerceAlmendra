@@ -121,7 +121,10 @@ function App() {
         image: getImageSrc(i.image)
       }));
       const { data } = await axios.post('/api/payments/create-preference', { items });
-      const target = data.init_point || data.sandbox_init_point;
+      const target = data.init_point
+        || data.sandbox_init_point
+        || data.redirect_url
+        || (data.preferenceId ? `https://www.mercadopago.com/checkout/v1/redirect?pref_id=${data.preferenceId}` : null);
       if (target) {
         window.location.href = target;
       } else {
