@@ -5,7 +5,9 @@ import axios from 'axios';
 // Configurar baseURL de axios con normalización para evitar URLs inválidas como ":5000"
 (function configureAxiosBaseURL() {
   const envUrl = process.env.REACT_APP_API_URL;
-  const fallback = 'http://localhost:5000';
+  const fallback = (typeof window !== 'undefined' && window.location)
+    ? `${window.location.protocol}//${window.location.host}`
+    : 'http://localhost:5000';
 
   const normalize = (url) => {
     if (!url) return fallback;

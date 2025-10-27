@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const path = require("path");
 const fs = require("fs/promises");
+const fsSync = require("fs");
 require("dotenv").config();
 const { MercadoPagoConfig, Preference } = require("mercadopago");
 
@@ -254,9 +255,22 @@ app.post("/api/payments/webhook", async (req, res) => {
   }
 });
 
-app.get("/", (req, res) => {
-  res.send("Backend conectado correctamente");
-});
+// Servir frontend (React) si existe build o si estamos en producción
+const clientBuildPath = path.resolve(__dirname, "client", "build");
+const hasBuild = fsSync.existsSync(path.join(clientBuildPath, "index.html"));
+if (process.env.NODE_ENV === "production" || hasBuild) {
+  app.use(express.static(clientBuildPath));
+
+  // Catch-all para rutas no API: devuelve index.html
+  app.get("*", (req, res) => {
+    if (req.path.startsWith("/api")) return res.status(404).end();
+    res.sendFile(path.join(clientBuildPath, "index.html"));
+  });
+} else {
+  app.get("/", (req, res) => {
+    res.send("Backend conectado correctamente");
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`▶ Servidor escuchando en http://localhost:${PORT}`);
