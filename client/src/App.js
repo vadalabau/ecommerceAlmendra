@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import './mobile-fix.css';
 import axios from 'axios';
 
 // Configurar baseURL de axios con normalización para evitar URLs inválidas como ":5000"
@@ -205,19 +206,21 @@ function App() {
       ) : (
         <>
           <header className="site-header">
-            <div className="brand">
-              <span className="brand-mark">A</span>
-              <span className="brand-name">Almendra</span>
-            </div>
-            <nav className="nav">
-              <button className={`nav-link ${page==='catalog' ? 'active' : ''}`} onClick={() => setPage('catalog')}>Catálogo</button>
-              <button className={`nav-link ${page==='cart' ? 'active' : ''}`} onClick={() => setPage('cart')}>Carrito</button>
-            </nav>
-            <div className="header-actions">
-              <div className="mini-cart" title="Productos en carrito">
-                <span className="mini-cart-count">{cart.reduce((s, i) => s + i.qty, 0)}</span>
+            <div className="container">
+              <div className="brand">
+                <span className="brand-mark">A</span>
+                <span className="brand-name">Almendra</span>
               </div>
-              <button className="btn btn-logout" onClick={handleLogout}>Cerrar sesión</button>
+              <nav className="nav">
+                <button className={`nav-link ${page==='catalog' ? 'active' : ''}`} onClick={() => setPage('catalog')}>Catálogo</button>
+                <button className={`nav-link ${page==='cart' ? 'active' : ''}`} onClick={() => setPage('cart')}>Carrito</button>
+              </nav>
+              <div className="header-actions">
+                <div className="mini-cart" title="Productos en carrito">
+                  <span className="mini-cart-count">{cart.reduce((s, i) => s + i.qty, 0)}</span>
+                </div>
+                <button className="btn btn-logout" onClick={handleLogout}>Cerrar sesión</button>
+              </div>
             </div>
           </header>
 
@@ -299,9 +302,11 @@ function App() {
                           <div className="product-media">
                             <img src={getImageSrc(product.image)} alt={product.name} className="product-image" loading='lazy' />
                           </div>
-                          <h3 className="product-title">{product.name}</h3>
-                          <p className="product-price">${product.price.toLocaleString()}</p>
-                          <button className="btn" onClick={() => addToCart(product)}>Agregar al carrito</button>
+                          <div className="product-content">
+                            <h3 className="product-title">{product.name}</h3>
+                            <p className="product-price">${product.price.toLocaleString()}</p>
+                            <button className="btn" onClick={() => addToCart(product)}>Agregar al carrito</button>
+                          </div>
                         </div>
                       ))}
                     </div>
