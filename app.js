@@ -3,8 +3,9 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const path = require("path");
+const fs = require("fs/promises");
 require("dotenv").config();
-const mercadopago = require("mercadopago");
+const { MercadoPagoConfig, Preference } = require("mercadopago");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -12,33 +13,26 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Mercado Pago config
-if (!process.env.MP_ACCESS_TOKEN) {
-  console.warn("⚠ MP_ACCESS_TOKEN no está definido. Las rutas de pago responderán 500.");
+// Utilidad para persistir catálogo a archivo JSON
+async function writeCatalog(products) {
+  try {
+    const catalogPath = path.resolve(__dirname, "catalog.json");
+    const data = JSON.stringify(products, null, 2);
+    await fs.writeFile(catalogPath, data, "utf-8");
+  } catch (e) {
+    console.error("Error al escribir catalog.json:", e?.message || e);
+  }
 }
-mercadopago.configure({ access_token: process.env.MP_ACCESS_TOKEN || "" });
 
-// Servir archivos estáticos (imágenes) desde la carpeta 'public/img'
-// Usar path.resolve para ruta absoluta
-console.log('Ruta pública imágenes:', path.join(__dirname, 'public', 'img'));
-
-app.use('/img', express.static(path.resolve(__dirname, 'public', 'img')));
-
-// Conexión a MongoDB o modo en memoria si no hay MONGO_URL
-let useMemoryStore = false;
-const mongoUrl = process.env.MONGO_URL;
-if (mongoUrl) {
-  mongoose
-    .connect(mongoUrl)
-    .then(() => console.log("✔ Conectado a MongoDB"))
-    .catch((err) => {
-      console.error("Error al conectar con MongoDB:", err);
-      console.warn("⚠ Iniciando en modo memoria para /api/productos");
-      useMemoryStore = true;
-    });
-} else {
-  console.warn("⚠ MONGO_URL no definida. Usando modo memoria para /api/productos");
-  useMemoryStore = true;
+// Leer catálogo desde archivo si existe
+async function readCatalog() {
+  try {
+    const catalogPath = path.resolve(__dirname, "catalog.json");
+    const data = await fs.readFile(catalogPath, "utf-8");
+    return JSON.parse(data);
+  } catch (_) {
+    return null;
+  }
 }
 
 // Esquema y modelo de Producto
@@ -61,6 +55,92 @@ let memoryProducts = [
 ];
 let memorySeq = memoryProducts.length + 1;
 
+// Mercado Pago config
+if (!process.env.MP_ACCESS_TOKEN) {
+  console.warn("⚠ MP_ACCESS_TOKEN no está definido. Las rutas de pago responderán 500.");
+}
+const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN || "" });
+
+// Servir archivos estáticos (imágenes) desde la carpeta 'public/img'
+// Usar path.resolve para ruta absoluta
+console.log('Ruta pública imágenes:', path.join(__dirname, 'public', 'img'));
+
+app.use('/img', express.static(path.resolve(__dirname, 'public', 'img')));
+
+// Conexión a MongoDB o modo en memoria si no hay MONGO_URL
+let useMemoryStore = false;
+const mongoUrl = process.env.MONGO_URL;
+if (mongoUrl) {
+  mongoose
+    .connect(mongoUrl)
+    .then(async () => {
+      console.log("✔ Conectado a MongoDB");
+      try {
+        // Si la colección está vacía, intentar poblarla desde catalog.json
+        const count = await Producto.estimatedDocumentCount();
+        if (count === 0) {
+          const fileCatalog = await readCatalog();
+          if (Array.isArray(fileCatalog) && fileCatalog.length > 0) {
+            try {
+              await Producto.insertMany(fileCatalog.map((p) => ({
+                name: p.name,
+                price: p.price,
+                category: p.category,
+                image: p.image,
+              })));
+              console.log(`✔ Se importaron ${fileCatalog.length} productos desde catalog.json`);
+            } catch (ie) {
+              console.warn("No se pudo importar catalog.json a MongoDB:", ie?.message || ie);
+            }
+          }
+        }
+        const all = await Producto.find();
+        await writeCatalog(all);
+      } catch (e) {
+        console.warn("No se pudo inicializar catalog.json desde MongoDB:", e?.message || e);
+      }
+    })
+    .catch((err) => {
+      console.error("Error al conectar con MongoDB:", err);
+      console.warn("⚠ Iniciando en modo memoria para /api/productos");
+      useMemoryStore = true;
+      // Inicializar memoria desde catalog.json si existe
+      (async () => {
+        const fileCatalog = await readCatalog();
+        if (Array.isArray(fileCatalog) && fileCatalog.length > 0) {
+          memoryProducts = fileCatalog.map((p, idx) => ({
+            _id: String(idx + 1),
+            name: p.name,
+            price: p.price,
+            category: p.category,
+            image: p.image,
+          }));
+          memorySeq = memoryProducts.length + 1;
+        }
+        // Escribir a archivo para normalizar formato
+        writeCatalog(memoryProducts);
+      })();
+    });
+} else {
+  console.warn("⚠ MONGO_URL no definida. Usando modo memoria para /api/productos");
+  useMemoryStore = true;
+  // Inicializar memoria desde catalog.json si existe
+  (async () => {
+    const fileCatalog = await readCatalog();
+    if (Array.isArray(fileCatalog) && fileCatalog.length > 0) {
+      memoryProducts = fileCatalog.map((p, idx) => ({
+        _id: String(idx + 1),
+        name: p.name,
+        price: p.price,
+        category: p.category,
+        image: p.image,
+      }));
+      memorySeq = memoryProducts.length + 1;
+    }
+    writeCatalog(memoryProducts);
+  })();
+}
+
 // Obtener todos los productos
 app.get("/api/productos", async (req, res) => {
   if (useMemoryStore) {
@@ -80,11 +160,20 @@ app.post("/api/productos", async (req, res) => {
   if (useMemoryStore) {
     const doc = { _id: String(memorySeq++), ...req.body };
     memoryProducts.push(doc);
+    // Persistir a archivo
+    writeCatalog(memoryProducts);
     return res.status(201).json(doc);
   }
   try {
     const nuevoProducto = new Producto(req.body);
     await nuevoProducto.save();
+    // Escribir catálogo completo a archivo
+    try {
+      const all = await Producto.find();
+      await writeCatalog(all);
+    } catch (e) {
+      console.warn("No se pudo actualizar catalog.json:", e?.message || e);
+    }
     res.status(201).json(nuevoProducto);
   } catch (err) {
     console.error("POST /api/productos error:", err);
@@ -123,11 +212,12 @@ app.post("/api/payments/create-preference", async (req, res) => {
       notification_url: process.env.MP_WEBHOOK_URL || undefined,
     };
 
-    const mpResp = await mercadopago.preferences.create(preference);
+    const pref = new Preference(mpClient);
+    const mpResp = await pref.create({ body: preference });
     return res.json({
-      preferenceId: mpResp.body.id,
-      init_point: mpResp.body.init_point,
-      sandbox_init_point: mpResp.body.sandbox_init_point,
+      preferenceId: mpResp.id,
+      init_point: mpResp.init_point,
+      sandbox_init_point: mpResp.sandbox_init_point,
     });
   } catch (err) {
     console.error("/api/payments/create-preference error:", err?.message || err);
