@@ -206,7 +206,6 @@ app.post("/api/payments/create-preference", async (req, res) => {
         pending: process.env.MP_PENDING_URL || "http://localhost:3000",
         failure: process.env.MP_FAILURE_URL || "http://localhost:3000",
       },
-      auto_return: "approved",
       binary_mode: true,
       statement_descriptor: "ALMENDRA",
       notification_url: process.env.MP_WEBHOOK_URL || undefined,
@@ -214,13 +213,31 @@ app.post("/api/payments/create-preference", async (req, res) => {
 
     const pref = new Preference(mpClient);
     const mpResp = await pref.create({ body: preference });
+    // Log básico para diagnóstico (no incluye credenciales)
+    try {
+      console.log("MP preference created:", {
+        haveBody: !!mpResp?.body,
+        keys: Object.keys(mpResp || {}),
+        id: mpResp?.id || mpResp?.body?.id,
+      });
+    } catch (_) {}
+
+    const id = mpResp?.id || mpResp?.body?.id;
+    const init_point = mpResp?.init_point || mpResp?.body?.init_point;
+    const sandbox_init_point = mpResp?.sandbox_init_point || mpResp?.body?.sandbox_init_point;
+    const redirect_url = id ? `https://www.mercadopago.com/checkout/v1/redirect?pref_id=${id}` : undefined;
+
     return res.json({
-      preferenceId: mpResp.id,
-      init_point: mpResp.init_point,
-      sandbox_init_point: mpResp.sandbox_init_point,
+      preferenceId: id,
+      init_point,
+      sandbox_init_point,
+      redirect_url,
     });
   } catch (err) {
     console.error("/api/payments/create-preference error:", err?.message || err);
+    if (err?.cause) {
+      console.error("cause:", err.cause);
+    }
     return res.status(500).json({ error: "No se pudo crear la preferencia" });
   }
 });
