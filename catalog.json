@@ -205,6 +205,28 @@
     "price": 20000,
     "category": "Zapatos",
     "image": "bota1.png",
+    "stock": 0,
+    "description": "Bota negra",
+    "__v": 0
+  },
+  {
+    "_id": "690d1a24d9968082d95cbf84",
+    "name": "Botas",
+    "price": 25000,
+    "category": "Zapatos",
+    "image": "bota1.png",
+    "stock": 10,
+    "description": "Botas",
+    "__v": 0
+  },
+  {
+    "_id": "690d1a5ad9968082d95cbf93",
+    "name": "Botas cuero",
+    "price": 23323,
+    "category": "Zapatos",
+    "image": "botanegra.png",
+    "stock": 10,
+    "description": "Botas cuero",
     "__v": 0
   }
 ]

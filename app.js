@@ -3,152 +3,110 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const path = require("path");
-const fs = require("fs/promises");
 const fsSync = require("fs");
 require("dotenv").config();
 const { MercadoPagoConfig, Preference } = require("mercadopago");
 
+// Intentar importar rutas nuevas (si existen)
+let authRoutes, productsRoutes, categoriesRoutes, ordersRoutes;
+try {
+  authRoutes = require('./routes/auth');
+  productsRoutes = require('./routes/products');
+  categoriesRoutes = require('./routes/categories');
+  ordersRoutes = require('./routes/orders');
+  console.log('✅ Rutas nuevas cargadas');
+} catch (err) {
+  console.log('⚠️  Rutas nuevas no disponibles, usando modo legacy');
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Middlewares
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.json());
 
-// Utilidad para persistir catálogo a archivo JSON
-async function writeCatalog(products) {
-  try {
-    const catalogPath = path.resolve(__dirname, "catalog.json");
-    const data = JSON.stringify(products, null, 2);
-    await fs.writeFile(catalogPath, data, "utf-8");
-  } catch (e) {
-    console.error("Error al escribir catalog.json:", e?.message || e);
-  }
+// Servir archivos estáticos (imágenes)
+console.log('Ruta pública imágenes:', path.join(__dirname, 'public', 'img'));
+app.use('/img', express.static(path.resolve(__dirname, 'public', 'img')));
+
+// Conexión a MongoDB
+const mongoUrl = process.env.MONGO_URL;
+if (!mongoUrl) {
+  console.error("❌ MONGO_URL no está definida en .env");
+  process.exit(1);
 }
 
-// Leer catálogo desde archivo si existe
-async function readCatalog() {
-  try {
-    const catalogPath = path.resolve(__dirname, "catalog.json");
-    const data = await fs.readFile(catalogPath, "utf-8");
-    return JSON.parse(data);
-  } catch (_) {
-    return null;
-  }
-}
-
-// Esquema y modelo de Producto
-const productoSchema = new mongoose.Schema({
-  name: String,
-  price: Number,
-  category: String,
-  image: String // nombre archivo imagen, ej: "remeraroja.png"
-});
-const Producto = mongoose.models.Producto || mongoose.model("Producto", productoSchema, "products");
-
-// Datos en memoria (fallback)
-let memoryProducts = [
-  { _id: "1", name: "Remera Amarilla", price: 15999, category: "Remeras", image: "remeraamarilla.png" },
-  { _id: "2", name: "Remera Verde", price: 15999, category: "Remeras", image: "remeraverde.png" },
-  { _id: "3", name: "Pantalón Azul", price: 24999, category: "Pantalones", image: "pantalonazul.png" },
-  { _id: "4", name: "Pantalón Cargo", price: 29999, category: "Pantalones", image: "pantaloncargo.png" },
-  { _id: "5", name: "Zapatilla Urban", price: 45999, category: "Calzado", image: "zapatilla1.png" },
-  { _id: "6", name: "Bota Cuero", price: 79999, category: "Calzado", image: "bota1.png" }
-];
-let memorySeq = memoryProducts.length + 1;
+mongoose
+  .connect(mongoUrl)
+  .then(() => {
+    console.log("✅ Conectado a MongoDB");
+  })
+  .catch((err) => {
+    console.error("❌ Error al conectar con MongoDB:", err);
+    process.exit(1);
+  });
 
 // Mercado Pago config
 if (!process.env.MP_ACCESS_TOKEN) {
   console.warn("⚠ MP_ACCESS_TOKEN no está definido. Las rutas de pago responderán 500.");
 }
-const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN || "" });
+const mpClient = new MercadoPagoConfig({ 
+  accessToken: process.env.MP_ACCESS_TOKEN || "" 
+});
 
-// Servir archivos estáticos (imágenes) desde la carpeta 'public/img'
-// Usar path.resolve para ruta absoluta
-console.log('Ruta pública imágenes:', path.join(__dirname, 'public', 'img'));
+// ============ RUTAS API ============
 
-app.use('/img', express.static(path.resolve(__dirname, 'public', 'img')));
-
-// Conexión a MongoDB o modo en memoria si no hay MONGO_URL
-let useMemoryStore = false;
-const mongoUrl = process.env.MONGO_URL;
-if (mongoUrl) {
-  mongoose
-    .connect(mongoUrl)
-    .then(async () => {
-      console.log("✔ Conectado a MongoDB");
-      try {
-        // Si la colección está vacía, intentar poblarla desde catalog.json
-        const count = await Producto.estimatedDocumentCount();
-        if (count === 0) {
-          const fileCatalog = await readCatalog();
-          if (Array.isArray(fileCatalog) && fileCatalog.length > 0) {
-            try {
-              await Producto.insertMany(fileCatalog.map((p) => ({
-                name: p.name,
-                price: p.price,
-                category: p.category,
-                image: p.image,
-              })));
-              console.log(`✔ Se importaron ${fileCatalog.length} productos desde catalog.json`);
-            } catch (ie) {
-              console.warn("No se pudo importar catalog.json a MongoDB:", ie?.message || ie);
-            }
-          }
-        }
-        const all = await Producto.find();
-        await writeCatalog(all);
-      } catch (e) {
-        console.warn("No se pudo inicializar catalog.json desde MongoDB:", e?.message || e);
-      }
-    })
-    .catch((err) => {
-      console.error("Error al conectar con MongoDB:", err);
-      console.warn("⚠ Iniciando en modo memoria para /api/productos");
-      useMemoryStore = true;
-      // Inicializar memoria desde catalog.json si existe
-      (async () => {
-        const fileCatalog = await readCatalog();
-        if (Array.isArray(fileCatalog) && fileCatalog.length > 0) {
-          memoryProducts = fileCatalog.map((p, idx) => ({
-            _id: String(idx + 1),
-            name: p.name,
-            price: p.price,
-            category: p.category,
-            image: p.image,
-          }));
-          memorySeq = memoryProducts.length + 1;
-        }
-        // Escribir a archivo para normalizar formato
-        writeCatalog(memoryProducts);
-      })();
-    });
-} else {
-  console.warn("⚠ MONGO_URL no definida. Usando modo memoria para /api/productos");
-  useMemoryStore = true;
-  // Inicializar memoria desde catalog.json si existe
-  (async () => {
-    const fileCatalog = await readCatalog();
-    if (Array.isArray(fileCatalog) && fileCatalog.length > 0) {
-      memoryProducts = fileCatalog.map((p, idx) => ({
-        _id: String(idx + 1),
-        name: p.name,
-        price: p.price,
-        category: p.category,
-        image: p.image,
-      }));
-      memorySeq = memoryProducts.length + 1;
-    }
-    writeCatalog(memoryProducts);
-  })();
+// Rutas de autenticación (si existen)
+if (authRoutes) {
+  app.use('/api/auth', authRoutes);
 }
 
-// Obtener todos los productos
+// Rutas de productos (si existen)
+if (productsRoutes) {
+  app.use('/api/products', productsRoutes);
+}
+
+// Rutas de categorías (si existen)
+if (categoriesRoutes) {
+  app.use('/api/categories', categoriesRoutes);
+}
+
+// Rutas de órdenes (si existen)
+if (ordersRoutes) {
+  app.use('/api/orders', ordersRoutes);
+}
+
+// Esquema de producto antiguo (compatible con estructura actual)
+const ProductoSchema = new mongoose.Schema({
+  name: String,
+  price: Number,
+  category: String,
+  image: String,
+  stock: Number,
+  description: String
+});
+
+const ProductoLegacy = mongoose.models.Producto || mongoose.model('Producto', ProductoSchema, 'products');
+
+// Ruta de productos legacy (compatibilidad con estructura antigua)
 app.get("/api/productos", async (req, res) => {
-  if (useMemoryStore) {
-    return res.json(memoryProducts);
-  }
   try {
-    const productos = await Producto.find();
+    // Intentar primero con el modelo nuevo
+    try {
+      const { Product } = require('./models');
+      const productos = await Product.find({ isActive: true })
+        .populate('category', 'name slug');
+      if (productos && productos.length > 0) {
+        return res.json(productos);
+      }
+    } catch (err) {
+      console.log('Modelo nuevo no disponible, usando legacy');
+    }
+    
+    // Si no funciona, usar el modelo antiguo
+    const productos = await ProductoLegacy.find();
     res.json(productos);
   } catch (err) {
     console.error("/api/productos error:", err);
@@ -156,98 +114,107 @@ app.get("/api/productos", async (req, res) => {
   }
 });
 
-// Agregar producto
-app.post("/api/productos", async (req, res) => {
-  if (useMemoryStore) {
-    const doc = { _id: String(memorySeq++), ...req.body };
-    memoryProducts.push(doc);
-    // Persistir a archivo
-    writeCatalog(memoryProducts);
-    return res.status(201).json(doc);
-  }
+// Ruta alternativa para productos
+app.get("/api/products", async (req, res) => {
   try {
-    const nuevoProducto = new Producto(req.body);
-    await nuevoProducto.save();
-    // Escribir catálogo completo a archivo
+    // Intentar primero con el modelo nuevo
     try {
-      const all = await Producto.find();
-      await writeCatalog(all);
-    } catch (e) {
-      console.warn("No se pudo actualizar catalog.json:", e?.message || e);
+      const { Product } = require('./models');
+      const productos = await Product.find({ isActive: true })
+        .populate('category', 'name slug');
+      if (productos && productos.length > 0) {
+        return res.json({ products: productos });
+      }
+    } catch (err) {
+      console.log('Modelo nuevo no disponible, usando legacy');
     }
-    res.status(201).json(nuevoProducto);
+    
+    // Si no funciona, usar el modelo antiguo
+    const productos = await ProductoLegacy.find();
+    res.json({ products: productos });
   } catch (err) {
-    console.error("POST /api/productos error:", err);
-    res.status(400).json({ error: "Error al agregar producto" });
+    console.error("/api/products error:", err);
+    res.status(500).json({ error: "Error al obtener productos" });
   }
 });
 
-// ==== Pagos: crear preferencia de Mercado Pago ====
+// ============ MERCADO PAGO ============
+
+// Crear preferencia de pago
 app.post("/api/payments/create-preference", async (req, res) => {
   try {
     if (!process.env.MP_ACCESS_TOKEN) {
       return res.status(500).json({ error: "MP_ACCESS_TOKEN no configurado" });
     }
-    const { items = [], payerEmail } = req.body || {};
+    
+    const { items = [], payerEmail, orderId } = req.body || {};
+    
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "Items vacíos" });
     }
 
     const preference = {
       items: items.map((i) => ({
-        title: i.name,
-        quantity: Number(i.qty || 1),
+        title: i.name || i.title,
+        quantity: Number(i.qty || i.quantity || 1),
         currency_id: "ARS",
         unit_price: Number(i.price || 0),
         picture_url: i.image ? (typeof i.image === 'string' ? i.image : undefined) : undefined,
       })),
       payer: payerEmail ? { email: payerEmail } : undefined,
       back_urls: {
-        success: process.env.MP_SUCCESS_URL || "http://localhost:3000",
-        pending: process.env.MP_PENDING_URL || "http://localhost:3000",
-        failure: process.env.MP_FAILURE_URL || "http://localhost:3000",
+        success: process.env.MP_SUCCESS_URL || "http://localhost:3000/success",
+        pending: process.env.MP_PENDING_URL || "http://localhost:3000/pending",
+        failure: process.env.MP_FAILURE_URL || "http://localhost:3000/failure",
       },
       binary_mode: true,
       statement_descriptor: "ALMENDRA",
       notification_url: process.env.MP_WEBHOOK_URL || undefined,
+      external_reference: orderId || undefined,
     };
 
     const pref = new Preference(mpClient);
     const mpResp = await pref.create({ body: preference });
-    // Log básico para diagnóstico (no incluye credenciales)
-    try {
-      console.log("MP preference created:", {
-        haveBody: !!mpResp?.body,
-        keys: Object.keys(mpResp || {}),
-        id: mpResp?.id || mpResp?.body?.id,
-      });
-    } catch (_) {}
+    
+    console.log("MP preference created:", {
+      id: mpResp?.id || mpResp?.body?.id,
+      orderId
+    });
 
     const id = mpResp?.id || mpResp?.body?.id;
     const init_point = mpResp?.init_point || mpResp?.body?.init_point;
     const sandbox_init_point = mpResp?.sandbox_init_point || mpResp?.body?.sandbox_init_point;
-    const redirect_url = id ? `https://www.mercadopago.com/checkout/v1/redirect?pref_id=${id}` : undefined;
 
     return res.json({
       preferenceId: id,
       init_point,
       sandbox_init_point,
-      redirect_url,
     });
   } catch (err) {
     console.error("/api/payments/create-preference error:", err?.message || err);
-    if (err?.cause) {
-      console.error("cause:", err.cause);
-    }
     return res.status(500).json({ error: "No se pudo crear la preferencia" });
   }
 });
 
-// Webhook básico
+// Webhook de Mercado Pago
 app.post("/api/payments/webhook", async (req, res) => {
   try {
-    // Puedes validar aquí con la API de MP según 'type' e 'id' recibidos
-    // y actualizar el estado de tu orden.
+    const { type, data } = req.body;
+    
+    console.log('Webhook recibido:', { type, data });
+
+    if (type === 'payment') {
+      const { Order } = require('./models');
+      const paymentId = data?.id;
+      
+      // Aquí puedes consultar el pago en la API de MP y actualizar la orden
+      // const payment = await mercadopago.payment.get(paymentId);
+      // await Order.findOneAndUpdate(
+      //   { paymentId },
+      //   { paymentStatus: payment.status }
+      // );
+    }
+
     res.sendStatus(200);
   } catch (err) {
     console.error("/api/payments/webhook error:", err?.message || err);
@@ -255,9 +222,12 @@ app.post("/api/payments/webhook", async (req, res) => {
   }
 });
 
-// Servir frontend (React) si existe build o si estamos en producción
+// ============ FRONTEND ============
+
+// Servir frontend (React) si existe build
 const clientBuildPath = path.resolve(__dirname, "client", "build");
 const hasBuild = fsSync.existsSync(path.join(clientBuildPath, "index.html"));
+
 if (process.env.NODE_ENV === "production" || hasBuild) {
   app.use(express.static(clientBuildPath));
 
@@ -268,11 +238,30 @@ if (process.env.NODE_ENV === "production" || hasBuild) {
   });
 } else {
   app.get("/", (req, res) => {
-    res.send("Backend conectado correctamente");
+    res.json({ 
+      message: "Backend Almendra API",
+      version: "2.0",
+      endpoints: {
+        auth: "/api/auth",
+        products: "/api/products",
+        categories: "/api/categories",
+        orders: "/api/orders"
+      }
+    });
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`▶ Servidor escuchando en http://localhost:${PORT}`);
+// Manejo de errores global
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ 
+    error: 'Error interno del servidor',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
+// Iniciar servidor
+app.listen(PORT, () => {
+  console.log(`▶ Servidor escuchando en http://localhost:${PORT}`);
+  console.log(`📦 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+});

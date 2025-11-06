@@ -59,36 +59,119 @@ function App() {
       .catch(err => console.error('Error al cargar productos:', err?.message || err));
   }, []);
 
-  const categories = [...new Set(products.map(p => p.category))];
+  // Extraer categorías (ahora pueden ser objetos o strings)
+  const categories = [...new Set(products.map(p => {
+    if (typeof p.category === 'object' && p.category?.name) {
+      return p.category.name;
+    }
+    return p.category;
+  }).filter(Boolean))];
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const found = users.find(u => u.username === user.username && u.password === user.password);
-    if (found) {
-      setIsLoggedIn(true);
-      setUserRole(found.role);
-      setError('');
-    } else {
-      setError('Usuario o contraseña incorrectos');
+    setError('');
+    
+    try {
+      // Intentar login con API del backend
+      const response = await axios.post('/api/auth/login', {
+        email: user.username, // El campo username ahora acepta email
+        password: user.password
+      });
+      
+      if (response.data && response.data.token) {
+        // Guardar token y usuario
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('userInfo', JSON.stringify(response.data.user));
+        
+        setIsLoggedIn(true);
+        setUserRole(response.data.user.role);
+        setError('');
+      }
+    } catch (error) {
+      console.error('Error de login:', error);
+      
+      // Fallback: intentar con usuarios locales (compatibilidad)
+      const found = users.find(u => u.username === user.username && u.password === user.password);
+      if (found) {
+        setIsLoggedIn(true);
+        setUserRole(found.role);
+        setError('');
+      } else {
+        setError('Usuario o contraseña incorrectos');
+      }
     }
   };
 
-  const handleRegisterUser = (e) => {
+  const handleRegisterUser = async (e) => {
     e.preventDefault();
     if (!user.username || !user.password) {
       setError('Complete todos los campos');
       return;
     }
-    if (users.some(u => u.username === user.username)) {
-      setError('El usuario ya existe');
+    
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(user.username)) {
+      setError('Debe usar un email válido (ejemplo: usuario@dominio.com)');
       return;
     }
-    const newUser = { username: user.username, password: user.password, role: 'user' };
-    setUsers([...users, newUser]);
+    
+    // Validar longitud de contraseña
+    if (user.password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    
     setError('');
-    alert('Usuario registrado con éxito. Ahora podés iniciar sesión.');
-    setIsRegistering(false);
-    setUser({ username: '', password: '' });
+    
+    try {
+      // Intentar registrar con API del backend
+      const response = await axios.post('/api/auth/register', {
+        email: user.username, // El campo username ahora acepta email
+        password: user.password,
+        name: user.username.split('@')[0] || 'Usuario' // Usar la parte antes del @ como nombre
+      });
+      
+      if (response.data && response.data.token) {
+        // Registro exitoso - hacer login automático
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('userInfo', JSON.stringify(response.data.user));
+        
+        alert('Usuario registrado con éxito!');
+        setIsLoggedIn(true);
+        setUserRole(response.data.user.role);
+        setIsRegistering(false);
+        setUser({ username: '', password: '' });
+      }
+    } catch (error) {
+      console.error('Error de registro:', error);
+      
+      // Si hay respuesta de la API, mostrar el error y NO hacer fallback
+      if (error.response) {
+        const errorMsg = error.response.data?.error || 'Error al registrar usuario';
+        setError(errorMsg);
+        return;
+      }
+      
+      // Solo hacer fallback si el servidor no responde (está caído)
+      if (error.message === 'Network Error' || !error.response) {
+        console.log('API no disponible, usando localStorage como fallback');
+        
+        if (users.some(u => u.username === user.username)) {
+          setError('El usuario ya existe');
+          return;
+        }
+        
+        const newUser = { username: user.username, password: user.password, role: 'user' };
+        setUsers([...users, newUser]);
+        setError('');
+        alert('Usuario registrado localmente. Para guardarlo en la base de datos, el servidor debe estar activo.');
+        setIsRegistering(false);
+        setUser({ username: '', password: '' });
+      } else {
+        setError('Error al registrar usuario');
+      }
+    }
   };
 
   const addToCart = (product) => {
@@ -147,18 +230,40 @@ function App() {
     setError('');
   };
 
-  const handleProductSubmit = (e) => {
+  const handleProductSubmit = async (e) => {
     e.preventDefault();
     if (!newProduct.name || !newProduct.price || !newProduct.category || !newProduct.image) {
       alert('Complete todos los campos del producto.');
       return;
     }
-    axios.post('/api/productos', newProduct)
-      .then(res => {
-        setProducts([...products, res.data]);
-        setNewProduct({ name: '', price: '', category: '', image: '' });
-      })
-      .catch(err => alert('Error al subir producto'));
+    
+    try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      // Buscar el ID de la categoría por nombre
+      const categoriesResponse = await axios.get('/api/categories');
+      const categoryObj = categoriesResponse.data.find(c => c.name === newProduct.category);
+      
+      if (!categoryObj) {
+        alert('Categoría no encontrada');
+        return;
+      }
+      
+      const productData = {
+        ...newProduct,
+        category: categoryObj._id, // Usar el ID de la categoría
+        stock: 10 // Stock por defecto
+      };
+      
+      const response = await axios.post('/api/products', productData, { headers });
+      setProducts([...products, response.data]);
+      setNewProduct({ name: '', price: '', category: '', image: '' });
+      alert('Producto agregado exitosamente');
+    } catch (err) {
+      console.error('Error al subir producto:', err);
+      alert('Error al subir producto: ' + (err.response?.data?.error || err.message));
+    }
   };
 
   // Para mostrar bien la imagen, concatenamos con la URL base del backend
@@ -179,7 +284,7 @@ function App() {
           <form onSubmit={isRegistering ? handleRegisterUser : handleLogin}>
             <input
               type="text"
-              placeholder="Usuario"
+              placeholder="Email o Usuario"
               value={user.username}
               onChange={(e) => setUser({ ...user, username: e.target.value })}
               required
@@ -271,11 +376,16 @@ function App() {
                   value={newProduct.price}
                   onChange={e => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })}
                 />
-                <input
-                  placeholder="Categoría"
+                <select
                   value={newProduct.category}
                   onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
-                />
+                  required
+                >
+                  <option value="">Seleccionar categoría</option>
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
                 <input
                   placeholder="Nombre archivo imagen"
                   value={newProduct.image}
@@ -297,7 +407,12 @@ function App() {
                   <div key={category}>
                     <h2 className="category-title">{category}</h2>
                     <div className="product-list">
-                      {products.filter(p => p.category === category).map(product => (
+                      {products.filter(p => {
+                        const prodCategory = typeof p.category === 'object' && p.category?.name 
+                          ? p.category.name 
+                          : p.category;
+                        return prodCategory === category;
+                      }).map(product => (
                         <div className="product-card" key={product._id}>
                           <div className="product-media">
                             <img src={getImageSrc(product.image)} alt={product.name} className="product-image" loading='lazy' />
