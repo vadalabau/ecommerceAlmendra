@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import './mobile-fix.css';
+import './language-selector.css';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
+import './i18n';
 
 // Configurar baseURL de axios con normalización para evitar URLs inválidas como ":5000"
 (function configureAxiosBaseURL() {
@@ -25,11 +28,13 @@ import axios from 'axios';
 })();
 
 function App() {
+  const { t, i18n } = useTranslation();
+  
   const [user, setUser] = useState({ username: '', password: '' });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState('');
-  const [error, setError] = useState('');
+  const [userRole, setUserRole] = useState('user');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [error, setError] = useState('');
   const [page, setPage] = useState('catalog'); // 'catalog' | 'cart'
 
   // Usuarios guardados en localStorage
@@ -105,20 +110,20 @@ function App() {
   const handleRegisterUser = async (e) => {
     e.preventDefault();
     if (!user.username || !user.password) {
-      setError('Complete todos los campos');
+      setError(t('completeAllFields'));
       return;
     }
     
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(user.username)) {
-      setError('Debe usar un email válido (ejemplo: usuario@dominio.com)');
+      setError(t('mustUseValidEmail'));
       return;
     }
     
     // Validar longitud de contraseña
     if (user.password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+      setError(t('passwordMinLength'));
       return;
     }
     
@@ -137,7 +142,7 @@ function App() {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('userInfo', JSON.stringify(response.data.user));
         
-        alert('Usuario registrado con éxito!');
+        alert(t('registeredSuccessfully'));
         setIsLoggedIn(true);
         setUserRole(response.data.user.role);
         setIsRegistering(false);
@@ -230,10 +235,15 @@ function App() {
     setError('');
   };
 
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+    localStorage.setItem('language', lng);
+  };
+
   const handleProductSubmit = async (e) => {
     e.preventDefault();
     if (!newProduct.name || !newProduct.price || !newProduct.category || !newProduct.image) {
-      alert('Complete todos los campos del producto.');
+      alert(t('completeAllFields'));
       return;
     }
     
@@ -246,7 +256,7 @@ function App() {
       const categoryObj = categoriesResponse.data.find(c => c.name === newProduct.category);
       
       if (!categoryObj) {
-        alert('Categoría no encontrada');
+        alert(t('error') + ': ' + t('category'));
         return;
       }
       
@@ -259,10 +269,10 @@ function App() {
       const response = await axios.post('/api/products', productData, { headers });
       setProducts([...products, response.data]);
       setNewProduct({ name: '', price: '', category: '', image: '' });
-      alert('Producto agregado exitosamente');
+      alert(t('productAddedSuccessfully'));
     } catch (err) {
       console.error('Error al subir producto:', err);
-      alert('Error al subir producto: ' + (err.response?.data?.error || err.message));
+      alert(t('errorAddingProduct') + ': ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -280,32 +290,36 @@ function App() {
     <div className="container">
       {!isLoggedIn ? (
         <div className="login-box">
-          <h2>{isRegistering ? 'Registrarse' : 'Iniciar sesión'}</h2>
+          <div className="language-selector">
+            <button onClick={() => changeLanguage('es')} className={i18n.language === 'es' ? 'active' : ''}>ES</button>
+            <button onClick={() => changeLanguage('en')} className={i18n.language === 'en' ? 'active' : ''}>EN</button>
+          </div>
+          <h2>{isRegistering ? t('register') : t('login')}</h2>
           <form onSubmit={isRegistering ? handleRegisterUser : handleLogin}>
             <input
               type="text"
-              placeholder="Email o Usuario"
+              placeholder={t('email')}
               value={user.username}
               onChange={(e) => setUser({ ...user, username: e.target.value })}
               required
             />
             <input
               type="password"
-              placeholder="Contraseña"
+              placeholder={t('password')}
               value={user.password}
               onChange={(e) => setUser({ ...user, password: e.target.value })}
               required
             />
-            <button className="btn" type="submit">{isRegistering ? 'Registrarse' : 'Entrar'}</button>
+            <button className="btn" type="submit">{isRegistering ? t('register') : t('startSession')}</button>
           </form>
           {error && <p className="error">{error}</p>}
           <p className="hint">
-            {isRegistering ? 'Ya tenés cuenta? ' : 'No tenés cuenta? '}
+            {isRegistering ? t('alreadyHaveAccount') + ' ' : t('dontHaveAccount') + ' '}
             <button className="link-button" onClick={() => {
               setError('');
               setIsRegistering(!isRegistering);
               setUser({ username: '', password: '' });
-            }}>{isRegistering ? 'Iniciar sesión' : 'Registrarse'}</button>
+            }}>{isRegistering ? t('startSession') : t('registerHere')}</button>
           </p>
         </div>
       ) : (
@@ -317,24 +331,23 @@ function App() {
                 <span className="brand-name">Almendra</span>
               </div>
               <nav className="nav">
-                <button className={`nav-link ${page==='catalog' ? 'active' : ''}`} onClick={() => setPage('catalog')}>Catálogo</button>
-                <button className={`nav-link ${page==='cart' ? 'active' : ''}`} onClick={() => setPage('cart')}>Carrito</button>
-              </nav>
-              <div className="header-actions">
-                <div className="mini-cart" title="Productos en carrito">
-                  <span className="mini-cart-count">{cart.reduce((s, i) => s + i.qty, 0)}</span>
+                <button className={`nav-link ${page==='catalog' ? 'active' : ''}`} onClick={() => setPage('catalog')}>{t('catalog')}</button>
+                <button className={`nav-link ${page==='cart' ? 'active' : ''}`} onClick={() => setPage('cart')}>{t('cart')} ({cart.reduce((sum,item)=>sum+item.qty,0)})</button>
+                <div className="language-selector-header">
+                  <button onClick={() => changeLanguage('es')} className={i18n.language === 'es' ? 'active' : ''}>ES</button>
+                  <button onClick={() => changeLanguage('en')} className={i18n.language === 'en' ? 'active' : ''}>EN</button>
                 </div>
-                <button className="btn btn-logout" onClick={handleLogout}>Cerrar sesión</button>
-              </div>
+                <button className="nav-link" onClick={handleLogout}>{t('logout')}</button>
+              </nav>
             </div>
           </header>
 
           {page === 'cart' && (
             <section className="cart-panel">
-              <h2>Carrito ({userRole})</h2>
+              <h2>{t('myCart')} ({userRole})</h2>
               <div className="cart">
                 {cart.length === 0 ? (
-                  <p>El carrito está vacío.</p>
+                  <p>{t('emptyCart')}</p>
                 ) : (
                   <>
                     {cart.map((item) => (
@@ -349,10 +362,10 @@ function App() {
                         </div>
                       </div>
                     ))}
-                    <div className="total">Total: ${total.toLocaleString()}</div>
+                    <div className="total">{t('total')}: ${total.toLocaleString()}</div>
                     <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
                       <button className="btn btn-primary" onClick={handleCheckout}>
-                        Pagar con Mercado Pago
+                        {t('checkout')}
                       </button>
                     </div>
                   </>
@@ -363,15 +376,15 @@ function App() {
 
           {page === 'catalog' && userRole === 'admin' && (
             <section className="admin-panel">
-              <h2>Agregar nuevo producto</h2>
+              <h2>{t('addNewProduct')}</h2>
               <form onSubmit={handleProductSubmit}>
                 <input
-                  placeholder="Nombre"
+                  placeholder={t('name')}
                   value={newProduct.name}
                   onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
                 />
                 <input
-                  placeholder="Precio"
+                  placeholder={t('price')}
                   type="number"
                   value={newProduct.price}
                   onChange={e => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })}
@@ -381,17 +394,17 @@ function App() {
                   onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
                   required
                 >
-                  <option value="">Seleccionar categoría</option>
+                  <option value="">{t('selectCategory')}</option>
                   {categories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
                 <input
-                  placeholder="Nombre archivo imagen"
+                  placeholder={t('imageName')}
                   value={newProduct.image}
                   onChange={e => setNewProduct({ ...newProduct, image: e.target.value })}
                 />
-                <button className="btn" type="submit">Subir</button>
+                <button className="btn" type="submit">{t('upload')}</button>
               </form>
             </section>
           )}
