@@ -79,7 +79,7 @@ Agrega las siguientes variables:
 MONGO_URL=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/ecommerce?retryWrites=true&w=majority
 
 # JWT Secret (Genera uno seguro)
-JWT_SECRET=***REMOVED***
+JWT_SECRET=<genera_una_clave_super_secreta_y_larga_para_produccion>
 
 # Puerto (Render lo asigna automáticamente, pero puedes especificar)
 PORT=5000
